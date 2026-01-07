@@ -4,6 +4,8 @@
 
 This document defines how the firmware is structured at a high level. This includes what each layer (HAL, interfaces, logic) is allowed to do, and what it must not do.
 
+---
+
 ## Block Diagram
 
 ```mermaid
@@ -14,6 +16,7 @@ graph LR
     D --> |Processed Data| E[Services: Logging/Comms]
     E --> |Write/Send| C
 ```
+---
 
 ## Layer Responsabilities
 
@@ -25,6 +28,8 @@ graph LR
 
 * **Services:** It provides cross-functional utilities such as the DataLogger. It handles the structured persistence of data on the SD card.
 
+---
+
 ## Forbidden Dependencies
 
 * **HAL (Hardware Abstraction Layer):** It must not be aware of the existence of specific sensors, file services, or flight algorithms, nor contain mission state variables.
@@ -32,5 +37,6 @@ graph LR
 * **Interfaces/Drivers:** It must not include Flight Logic or mission awareness, it is not its responsibility to know what phase of flight it is in.
 
 * **Flight Logic:** It must not depend on or be aware of hardware-specific details, and must not access peripherals or low-level interfaces directly.
+
 
 * **Services:** The DataLogger service must be generic, it is not responsible for knowing what data it is saving, it should only transmit or only store the message that the Flight Logic tells it to.
