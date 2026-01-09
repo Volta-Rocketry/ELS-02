@@ -13,7 +13,7 @@ The data were standardized by defining variable names, units, and types to ensur
 - [ ] Feature
 - [ ] Bug fix
 - [ ] Refactor
-- [ ] Documentation
+- [x] Documentation
 - [ ] Build / CI
 - [ ] Other (specify):
 ### Affected Components
@@ -124,3 +124,4 @@ struct global_data {
 };
 
 ```
+
