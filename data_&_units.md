@@ -13,7 +13,7 @@ The data were standardized by defining variable names, units, and types to ensur
 - [ ] Feature
 - [ ] Bug fix
 - [ ] Refactor
-- [x] Documentation
+- [ ] Documentation
 - [ ] Build / CI
 - [ ] Other (specify):
 ### Affected Components
@@ -122,4 +122,5 @@ struct global_data {
     pressure_data press;
     temperature_data temp;
 };
+
 ```
