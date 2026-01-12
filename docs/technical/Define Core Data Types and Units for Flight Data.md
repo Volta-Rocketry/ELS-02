@@ -44,13 +44,6 @@ struct angular_velocity {
     uint64_t timestamp; // Timestamp
 };
 ```
-* **Altitude:**
-```cpp
-struct altitude {
-    float alt; // Altitude
-    uint64_t time_stamp; // Timestamp
-};
-```
 * **Magnetometer:**
 ```cpp
 struct magnetometer {
@@ -91,10 +84,11 @@ struct airframe_stress {
 };
 ```
 **3.3. Environment and Avionics**
-* **Pressure:** 
+* **Altitude and Pressure:** 
 ```cpp
-struct pressure_data {
-    float pressure; // Pressure
+struct barometer_data {
+    float pressure;    // Pressure
+    float alt;         // Altitude
     uint64_t timestamp; // Timestamp
 };
 ```
@@ -161,7 +155,7 @@ struct global_data {
     airframe_stress air_load;
     
     // Environment
-    pressure_data press;
+    barometer_data baro;;
     temperature_data temp;
     audio_data audio;
 
