@@ -1,0 +1,166 @@
+# 1. Objective
+In this part, the data and their physical units are defined, establishing data structures that enable consistent information exchange between roles, avoiding differences in variables or interpretation errors, without depending on the hardware.
+# 2. Data Standards and Physical Units
+* **Acceleration:** Meters per second squared ($m/s^2$). Variable: `accel`
+  Type: `float`
+* **Linear Velocity:** Meters per second ($m/s$). Variable: `lin_vel`
+  Type: `float`
+* **Angular Velocity:** Radians per second ($rad/s$). Variable: `ang_vel` Type: `float`
+* **Magnetometer:** microteslas ($\mu T$). Variable: `mag` Type: `float`
+* **Pressure:** Pascals ($Pa$). Variable: `pressure` Type: `float`
+* **Altitude:** Meters ($m$). Variable: `alt` Type: `float`
+* **Temperature:** Kelvin ($K$). Variable: `temp` Type: `float`
+* **Deformation:** Strain ($ε$) (dimensionless ($mm/mm$)). Variable: `def` Type: `float`
+* **Loads:** Newtons ($N$). Variable: `load` Type: `float`
+* **Audio:** Amplitude. Variable: `audio` Type: `int16_t`
+* **Time:** Milliseconds ($ms$) since system startup. Variable: `timestamp` Type: `uint64_t`
+# 3. Data Structures
+**3.1. Motion and Orientation**
+* **Linear acceleration:**
+
+```cpp
+struct acceleration {
+    float ax; // Acceleration on the X axis
+    float ay; // Acceleration on the Y axis
+    float az; // Acceleration on the Z axis
+    uint64_t timestamp; // Timestamp
+};
+```
+* **Linear Velocity:**
+```cpp
+struct linear_velocity {
+    float vx; // linear velocity on the X axis
+    float vy; // Linear velocity on the Y axis
+    float vz; // Linear velocity on the Z axis
+    uint64_t timestamp; // Timestamp
+};
+```
+* **Angular Velocity:**
+```cpp
+struct angular_velocity {
+    float gx; // Angular velocity on the X axis
+    float gy; // Angular velocity on the Y axis
+    float gz; // Angular velocity on the Z axis
+    uint64_t timestamp; // Timestamp
+};
+```
+* **Magnetometer:**
+```cpp
+struct magnetometer {
+    float mx; // Magnetic field on the X axis
+    float my; // Magnetic field on the Y axis
+    float mz; // Magnetic field on the Z axis
+    uint64_t timestamp; // Timestamp
+};
+```
+**3.2. Structural Measurements**
+* **Bulkhead Deformation:**
+```cpp
+struct bulkhead_deformation {
+    float bulk_def_1; // Bulkhead deformation (sensor "1")
+    float bulk_def_2; // Bulkhead deformation (sensor "2")
+    float bulk_def_3; // Bulkhead deformation (sensor "3")
+    uint64_t timestamp; // Timestamp
+};
+```
+* **Airframe Deformation:**
+```cpp
+struct airframe_deformation {
+    float air_def_1; // Airframe deformation (sensor "1")
+    float air_def_2; // Airframe deformation (sensor "2")
+    float air_def_3; // Airframe deformation (sensor "3")
+    float air_def_4; // Airframe deformation (sensor "4")
+    uint64_t timestamp; // Timestamp
+};
+```
+* **Airframe Loads:**
+```cpp
+struct airframe_stress {
+    float air_load_1; // Airframe load (sensor "1")
+    float air_load_2; // Airframe load (sensor "2")
+    float air_load_3; // Airframe load (sensor "3")
+    float air_load_4; // Airframe load (sensor "4")
+    uint64_t timestamp; // Timestamp
+};
+```
+**3.3. Environment and Avionics**
+* **Altitude and Pressure:** 
+```cpp
+struct barometer_data {
+    float pressure;    // Pressure
+    float alt;         // Altitude
+    uint64_t timestamp; // Timestamp
+};
+```
+* **Temperature:**
+```cpp
+struct temperature_data {
+    float temp_1; // Temperature (sensor "1")
+    float temp_2; // Temperature (sensor "2")
+    float temp_3; // Temperature (sensor "3")
+    float temp_4; // Temperature (sensor "4")
+    uint64_t timestamp; // Timestamp
+};
+```
+* **Audio:**
+```cpp
+struct audio_data {
+    int16_t audio; // Mic sensor
+    uint64_t timestamp; // Timestamp
+};
+```
+# 4. Processed Data
+This section defines variables for processed data to ensure that only validated signals are used, reducing noise propagation and minimizing errors.
+
+**4.1. State Estimations:**
+Stores estimated position and velocity obtained from acceleration measurements.
+```cpp
+struct estimated_data {
+  // Estimated position (m)
+    float px; // X axis
+    float py; // Y axis
+    float pz; // Z axis
+  // Estimated velocity (m/s)
+    float sx; // X axis
+    float sy; // Y axis
+    float sz; // Z axis
+    uint64_t timestamp; // Timestamp
+};
+```
+**4.2. Digital Filtering:**
+Stores values smoothed using filtering algorithms.
+```cpp
+struct filtered_data {
+    float accel_f[3]; // [ax, ay, az] filtered acceleration
+    float gyro_f[3];  // [gx, gy, gz] filtered velocity
+    float alt_f;      // Filtered altitude
+    uint64_t timestamp; // Timestamp
+};
+```
+# 5. Global Data Container
+```cpp
+struct global_data {
+    uint64_t timestamp; // Synchronization timestamp
+    
+    // Motion
+    acceleration accel;
+    linear_velocity lin_vel;
+    angular_velocity ang_vel;
+    altitude alt;
+    magnetometer mag;
+    
+    // Structural
+    bulkhead_deformation bulk_def;
+    airframe_deformation air_def;
+    airframe_stress air_load;
+    
+    // Environment
+    barometer_data baro;;
+    temperature_data temp;
+    audio_data audio;
+
+    // Processed Data
+    filtered_data filtered;
+    estimated_data estimated;
+};
+```
