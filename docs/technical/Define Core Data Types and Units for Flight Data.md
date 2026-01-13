@@ -13,7 +13,7 @@ In this part, the data and their physical units are defined, establishing data s
 * **Deformation:** Strain ($ε$) (dimensionless ($mm/mm$)). Variable: `def` Type: `float`
 * **Loads:** Newtons ($N$). Variable: `load` Type: `float`
 * **Audio:** Amplitude. Variable: `audio` Type: `int16_t`
-* **Time:** Microseconds ($\mu s$) since system startup. Variable: `timestamp` Type: `uint64_t`
+* **Time:** Milliseconds ($ms$) since system startup. Variable: `timestamp` Type: `uint64_t`
 # 3. Data Structures
 **3.1. Motion and Orientation**
 * **Linear acceleration:**
