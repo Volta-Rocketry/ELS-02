@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines how the firmware is structured at a high level. This includes what each layer (HAL, interfaces, logic) is allowed to do, and what it must not do.
+This document defines the high-level structure of the firmware for the flight instrumentation system. It establishes responsabilities and limitations for each layer to ensure modularity.
 
 ---
 
@@ -10,33 +10,103 @@ This document defines how the firmware is structured at a high level. This inclu
 
 ```mermaid
 graph LR
-    A[Hardware: Sensors/Flash] --> |Raw Signals| B(HAL)
-    B --> |Register Access| C(Interfaces/Drivers)
-    C --> |Engineering Units| D{Flight Logic}
-    D --> |Processed Data| E[Services: Logging/Comms]
-    E --> |Write/Send| C
+    subgraph HW [Layer 1: Hardware Access]
+        direction LR
+        HAL[HAL] 
+        COMM[Comm Driver]
+    end
+
+    subgraph DN [Layer 2: Data Normalization]
+        direction LR
+        SD[Sensor Driver]
+        VSL[Virtual Sensor Driver]
+    end
+
+    subgraph DS [Layer 3: Data Switching]
+        MUX{Multiplexer / Switch}
+    end
+
+    subgraph FA [Layer 4: Flight Application]
+        EF[Estimation & Filtering]
+        FL[Flight Logic]
+    end
+
+    subgraph LOGG [Layer 5: Logging & Telemetry]
+    end
+
+    %% Actual Flow
+    HAL -->|Register Access| SD
+    SD -->|Typed Data| MUX
+
+    %% Injected Flow
+    COMM -->|Raw Frames| VSL
+    VSL -->|Typed Data| MUX
+
+    %% Unified Output
+    MUX -->|Clean Input| EF
+    EF --> FL
+
+    FL --> |Processed Data| LOGG
+
+    LOGG --> |Write/Send| DN
 ```
+
+The software firmware is divided into five layers, it was structured to operate with real sensor data or sensor-like data injected through the serial interface (flight logic is not aware of whether data is real or injected)
+
 ---
 
 ## Layer Responsabilities
 
-* **HAL (Hardware Abstraction Layer):** Abstract the specific hardware of the microcontroller. Manage buses (I2C, SPI), GPIOs, timers, interrupts and low-level data buffering.
+* **Hardware Access:**
+    * Configure and control communication buses (I2C, SPI, UART).
+    * Perform the exchange of bytes or electrical signals without interpreting their physical meaning.
+    * Expose a generic interface so that the upper layers do not depend on a specific MCU model.
 
-* **Interfaces/Drivers:** Translate the HAL data into physical units. "Label" the data so that the logic can understand it without hardware-specific knowledge.
+* **Data Normalization:**
+    * Convert binary records or parsers into physical variables.
+    * Ensure that both the physical and virtual drivers deliver the same data structure format (Typed Data).
+    * Process external serial frames to simulate the behavior of a real sensor.
 
-* **Flight Logic:** Estimate state (speed/position), detect flight phases and calculate structural metrics.
+* **Data Switching:**
+    * Dynamically switch between real or injected sensor data depending on the operating mode.
+    * Deliver a single, constant flow (Clean Input) to the application, hiding the origin of the data.
 
-* **Services:** It provides cross-functional utilities such as the DataLogger. It handles the structured persistence of data on the SD card.
+* **Flight Application:**
+    * Estimate state (speed, position, etc).
+    * Detect flight phases.
+    * Calculate structural metrics.
+    * Apply filters (such as Kalman) to smooth and correct the input data.
+
+* **Logging & Telemetry:**
+    * Write the states and telemetry to local media (SD or Flash cards).
+    * Record the complete flow (Processed Data) to allow for post-flight analysis or fault debugging.
 
 ---
 
 ## Forbidden Dependencies
 
-* **HAL (Hardware Abstraction Layer):** It must not be aware of the existence of specific sensors, file services, or flight algorithms, nor contain mission state variables.
+* **Hardware Accesss:**
+    * Processing or interpreting the meaning of the data is prohibited; it must only transfer byte streams or raw signals between the hardware and the upper layers.
+    * Mission knowledge is restricted; it cannot make decisions based on the flight state.
+    * Defining complex data structures is prohibited; it must operate only with generic buffers without distinguishing types.
+   
+* **Data Normalization:**
+    * Dependency between the Sensor Driver and the Virtual Sensor Driver is prohibited; they must be completely isolated modules.
+    * Source selection is restricted; it cannot decide on its own whether to deliver real or virtual data to the system.
+    * It is mandatory to guarantee exact conversion to primitive types (bool, int16, float32) before transferring the information to the next layer.
+ 
+* **Data Switching:**
+    * Calculations, filters, or modifications to input values ​​are prohibited.
+    * Upstream access is restricted; it cannot execute flight logic functions.
+    * History storage is prohibited; it must function as a bridge for passing instantaneous data without memory of previous states.
 
-* **Interfaces/Drivers:** It must not include Flight Logic or mission awareness, it is not its responsibility to know what phase of flight it is in.
+* **Flight Application:**
+    * Direct access to Layer 1 hardware or communication drivers is prohibited.
+    * Source differentiation is restricted; it must operate identically regardless of whether the data is real or injected.
+    * Managing physical writes to memory or transmitting telemetry signals is prohibited.
 
-* **Flight Logic:** It must not depend on or be aware of hardware-specific details, and must not access peripherals or low-level interfaces directly.
+* **Logging & Telemetry:**
+    * It is prohibited to rely on the application's internal logic; it must receive data in serializable formats with explicit memory sizes.
+    * Control over the vehicle is restricted; it has no authority to change flight states or send control commands.
+    * It is prohibited to implement low-level protocols; it must delegate physical transmission to the lower-layer communication infrastructure.
 
-
-* **Services:** The DataLogger service must be generic, it is not responsible for knowing what data it is saving, it should only transmit or only store the message that the Flight Logic tells it to.
