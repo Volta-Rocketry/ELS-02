@@ -96,7 +96,7 @@ BURNOUT_ACCEL_THRESHOLD = 0.0  # m/s^2 (maximum threshold for burnout confirmati
 APOGEE_ALT_DROP = 2.0          # m (Hysteresis threshold)
 MAIN_DEPLOY_ALT = 50.0        # m (parameter to deploy) (during phase)
 
-# SAFEYY COUNTERS AND TIMERS
+# SAFETY COUNTERS AND TIMERS
 APOGEE_COUNTER_LIMIT = 5       # Consecutive readings to confirm apogee
 APOGEE_SAFETY_DELAY = 3.0      # Waiting time in Apogee phase
 
