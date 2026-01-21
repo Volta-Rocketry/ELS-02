@@ -25,15 +25,15 @@ The Flight Phases are divided into six states, it was structured with the intent
 ## Transition Conditions
 
 * **PRE-FLIGHT --> BOOST**
-    * **Condition:** Vertical acceleration > Minimum threshold for launch confirmation.
+    * **Condition:** Vertical acceleration > Minimum acceleration threshold & Altitude > Minimum altitude threshold.
     * **Logic:** Detect the initial thrust of the motor
 
 * **BOOST --> COAST**
-    * **Condition:** Vertical acceleration < Maximum threshold for burnout confirmation.
+    * **Condition:** Vertical acceleration < Maximum acceleration threshold.
     * **Logic:** Detect the burnout of the motor.
 
 * **COAST --> APOGEE**
-    * **Condition:** Current altitude < Maximum altitude (hysteresis threshold) confirmed by consecutive readings to confirm apogee.
+    * **Condition:** Current altitude < Maximum altitude (hysteresis threshold) confirmed by consecutive readings to confirm apogee & Current altitude < Max altitude - 2 m.
     * **Logic:** Confirm that the rocket is descending, filtering out possible sampling errors.
 
 * **APOGEE --> DESCENT**
@@ -61,7 +61,7 @@ The Flight Phases are divided into six states, it was structured with the intent
 
     [*] --> S1
     
-    S1 --> S2: <strong>IGNITION DETECTION</strong><br/>(Accel > 20 m/s²)
+    S1 --> S2: <strong>IGNITION DETECTION</strong><br/>(Accel > 20 m/s² & alt > 2 m)
     
     S2 --> S3: <strong>BURNOUT DETECTION</strong><br/>(Accel < 0 m/s²)
     
@@ -91,10 +91,11 @@ class FlightPhase(Enum):
     RECOVERY = auto()
 
 # --- PHYSICAL THRESHOLD ---
-LAUNCH_ACCEL_THRESHOLD = 20.0  # m/s^2 (minimum threshold for launch confirmation)
-BURNOUT_ACCEL_THRESHOLD = 0.0  # m/s^2 (maximum threshold for burnout confirmation)
+LAUNCH_ALT_THRESHOLD = 2.0     # m (minimum altitude threshold for launch confirmation)
+LAUNCH_ACCEL_THRESHOLD = 20.0  # m/s^2 (minimum acceleration threshold for launch confirmation)
+BURNOUT_ACCEL_THRESHOLD = 0.0  # m/s^2 (maximum acceleration threshold for burnout confirmation)
 APOGEE_ALT_DROP = 2.0          # m (Hysteresis threshold)
-MAIN_DEPLOY_ALT = 50.0        # m (parameter to deploy) (during phase)
+MAIN_DEPLOY_ALT = 50.0         # m (parameter to deploy) (during phase)
 
 # SAFETY COUNTERS AND TIMERS
 APOGEE_COUNTER_LIMIT = 5       # Consecutive readings to confirm apogee
@@ -138,7 +139,7 @@ class FlightComputer_FSM:
 
         # --- PHASE TRANSITION LOGIC ---
         if self.phase == FlightPhase.PRE_FLIGHT:
-            if accel_z > LAUNCH_ACCEL_THRESHOLD:
+            if accel_z > LAUNCH_ACCEL_THRESHOLD and altitude > LAUNCH_ALT_THRESHOLD:
                 self.transition_to(FlightPhase.BOOST, current_time)
 
         elif self.phase == FlightPhase.BOOST:
