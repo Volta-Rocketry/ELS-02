@@ -25,24 +25,28 @@ The Flight Phases are divided into six states, it was structured with the intent
 ## Transition Conditions
 
 * **PRE-FLIGHT --> BOOST**
-    * **Condition:** Vertical acceleration > Minimum acceleration threshold & Altitude > Minimum altitude threshold.
-    * **Logic:** Detect the initial thrust of the motor
-
+   * **Logic:** Detect the initial thrust of the motor.
+   * **Condition:** Vertical acceleration > 30.0 m/s² (~3G) (Minimum acceleration threshold) & Altitude > 30.0 m (Minimum altitude threshold).
+   * **Value Justification:** 30.0 m/s² is standard to reject handling bumps but detect all HPR motors, 30.0 m is generally used in barometric logic and in this case functions as a safety condition for phase change.
 * **BOOST --> COAST**
-    * **Condition:** Vertical acceleration < Maximum acceleration threshold.
-    * **Logic:** Detect the burnout of the motor.
+   * **Logic:** Detect the burnout of the motor.
+   * **Condition:** Vertical acceleration < -2.0 m/s² (Maximum acceleration threshold).
+   * **Value Justification:** After motor burnout, drag causes immediate deceleration, -2.0 m/s² ensures the rocket is physically slowing down.
 
 * **COAST --> APOGEE**
-    * **Condition:** Current altitude < Maximum altitude (hysteresis threshold) confirmed by consecutive readings to confirm apogee & Current altitude < Max altitude - 2 m.
-    * **Logic:** Confirm that the rocket is descending, filtering out possible sampling errors.
+   * **Logic:** Confirm that the rocket is descending, filtering out possible sampling errors.
+   * **Condition:** Current altitude < Maximum altitude (hysteresis threshold) confirmed by 10 consecutive readings to confirm apogee & Current altitude < Max altitude - 5.0 m.
+   * **Value Justification:** 10 samples robustly filters out noise, 5.0 m provides a solid confirmation that the rocket has tipped over and is descending.
 
 * **APOGEE --> DESCENT**
-    * **Condition:** Time elapsed in apogee phase > Security Delay.
-    * **Logic:** Temporarily ignore sensor readings to allow ejection charge turbulence to stabilize before monitoring descent. (It can be modified according to actions during the flight)
+   * **Logic:** Temporarily ignore sensor readings to allow ejection charge turbulence to stabilize before monitoring descent. (It can be modified according to actions during the flight)
+   * **Condition:** Time elapsed in apogee phase > 2.0 s (Security Delay).
+   * **Value Justification:** 2.0 s delay allows the airframe dynamics to stabilize.
 
-* **DESCENT --> RECOVERY**
-    * **Condition:** altitude below a certain height.
-    * **Logic:** Detect the impact/touchdown.
+* **DESCENT --> RECOVERY** 
+   * **Logic:** Detect the impact/touchdown. 
+   * **Condition:** Altitude < 50.0 m & Altitude change < 2.0 m over 10.0 s 
+   * **Value Justification:** 10.0 s acts as a safety buffer against false landing detection caused by barometric drift, ground-level turbulence, or temporary pressure anomalies.
 
 ---
 
@@ -61,15 +65,15 @@ The Flight Phases are divided into six states, it was structured with the intent
 
     [*] --> S1
     
-    S1 --> S2: <strong>IGNITION DETECTION</strong><br/>(Accel > 20 m/s² & alt > 2 m)
+    S1 --> S2: <strong>IGNITION DETECTION</strong><br/>(Accel > 30.0 m/s² (~3G) & alt > 30.0 m)
     
-    S2 --> S3: <strong>BURNOUT DETECTION</strong><br/>(Accel < 0 m/s²)
+    S2 --> S3: <strong>BURNOUT DETECTION</strong><br/>(Accel < -2.0 m/s²)
     
-    S3 --> S4: <strong>APOGEE CONFIRMATION</strong><br/>(Alt < Max in 5 consecutive readings & Alt < Max - 2 m)
+    S3 --> S4: <strong>APOGEE CONFIRMATION</strong><br/>(Alt < Max in 10 consecutive readings & Alt < Max - 5 m)
     
-    S4 --> S5: <strong>SAFETY DELAY</strong><br/>(Timer > 3.0s)
+    S4 --> S5: <strong>SAFETY DELAY</strong><br/>(Timer > 2.0 s)
 
-    S5 --> S6: <strong>TOUCHDOWN</strong><br/>(Alt < 0.5m)
+    S5 --> S6: <strong>TOUCHDOWN</strong><br/>(Alt < 50.0 m & Alt change < 2.0 m over 10.0 s)
 ```
 ---
 
@@ -91,15 +95,18 @@ class FlightPhase(Enum):
     RECOVERY = auto()
 
 # --- PHYSICAL THRESHOLD ---
-LAUNCH_ALT_THRESHOLD = 2.0     # m (minimum altitude threshold for launch confirmation)
-LAUNCH_ACCEL_THRESHOLD = 20.0  # m/s^2 (minimum acceleration threshold for launch confirmation)
-BURNOUT_ACCEL_THRESHOLD = 0.0  # m/s^2 (maximum acceleration threshold for burnout confirmation)
-APOGEE_ALT_DROP = 2.0          # m (Hysteresis threshold)
-MAIN_DEPLOY_ALT = 50.0         # m (parameter to deploy) (during phase)
+LAUNCH_ALT_THRESHOLD = 30.0     # m (minimum altitude for launch confirmation)
+LAUNCH_ACCEL_THRESHOLD = 30.0   # m/s^2 (minimum threshold for launch confirmation)
+BURNOUT_ACCEL_THRESHOLD = -2.0  # m/s^2 (maximum threshold for burnout confirmation)
+APOGEE_ALT_DROP = 5.0           # m (Hysteresis threshold)
+MAIN_DEPLOY_ALT = 200.0         # m (parameter to deploy) (during phase)
+LANDING_ARM_ALT = 50.0          # m (below this altitude is possible the recover)
+LANDING_STABILITY = 2.0         # m (range of movement to consider recover)
+LANDING_TIME_THRESHOLD = 10.0   # s (waiting time to confirm recover)
 
 # SAFETY COUNTERS AND TIMERS
-APOGEE_COUNTER_LIMIT = 5       # Consecutive readings to confirm apogee
-APOGEE_SAFETY_DELAY = 3.0      # Waiting time in Apogee phase
+APOGEE_COUNTER_LIMIT = 10       # Consecutive readings to confirm apogee
+APOGEE_SAFETY_DELAY = 2.0       # Waiting time in Apogee phase
 
 class FlightComputer_FSM:
     def __init__(self):
@@ -108,8 +115,10 @@ class FlightComputer_FSM:
         
         # SYSTEM MEMORY
         self.max_altitude = 0.0
-        self.apogee_counter = 0      # Hysteresis
-        self.state_start_time = 0.0  # Phase time
+        self.apogee_counter = 0         # Hysteresis
+        self.state_start_time = 0.0     # Phase time
+        self.last_alt_reading = 0.0     # Reference to detect movement
+        self.landing_start_time = None  # Initial time of the timestamp
         
         # ACTION STATE (Actions)
         self.drogue_fired = False
@@ -138,26 +147,31 @@ class FlightComputer_FSM:
             self.apogee_counter = 0
 
         # --- PHASE TRANSITION LOGIC ---
+
+        # -- Pre-flight --
         if self.phase == FlightPhase.PRE_FLIGHT:
             if accel_z > LAUNCH_ACCEL_THRESHOLD and altitude > LAUNCH_ALT_THRESHOLD:
                 self.transition_to(FlightPhase.BOOST, current_time)
 
+        # -- Boost --
         elif self.phase == FlightPhase.BOOST:
             if accel_z < BURNOUT_ACCEL_THRESHOLD:
                 self.transition_to(FlightPhase.COAST, current_time)
 
+        # -- Coast --
         elif self.phase == FlightPhase.COAST:
             # Hysteresis
-            if altitude < self.max_altitude:
+            if altitude <= self.max_altitude:
                 self.apogee_counter += 1
             else:
                 self.apogee_counter = 0 # False apogee
             
             # Apogee transition confirmation
-            if self.apogee_counter >= APOGEE_COUNTER_LIMIT and self.apogee_counter < (self.max_altitude - APOGEE_ALT_DROP):
+            if self.apogee_counter >= APOGEE_COUNTER_LIMIT and altitude < (self.max_altitude - APOGEE_ALT_DROP):
                 self.transition_to(FlightPhase.APOGEE, current_time)
                 print("   >>> [Apogee: ",self.max_altitude,"m]")
 
+        # -- Apogee --
         elif self.phase == FlightPhase.APOGEE:
             # Timer
             time_in_phase = current_time - self.state_start_time
@@ -166,15 +180,31 @@ class FlightComputer_FSM:
             if time_in_phase > APOGEE_SAFETY_DELAY:
                 self.transition_to(FlightPhase.DESCENT, current_time)
 
+        # -- Descent --
         elif self.phase == FlightPhase.DESCENT:
             # Deploy parachute
             if altitude < MAIN_DEPLOY_ALT and not self.main_fired:
                 print(f"   >>> [FIRE MAIN] (Altitude: {altitude}m) (example)")
                 self.main_fired = True
 
-            # Recovery condition
-            if altitude <= 0.5:
-                self.transition_to(FlightPhase.RECOVERY, current_time)
+            # Recovery conditions
+            if altitude < LANDING_ARM_ALT:
+                is_stationary = abs(altitude - self.last_alt_reading) < LANDING_STABILITY
+
+                # Timestamp
+                if is_stationary:
+                    if self.landing_start_time is None:
+                        self.landing_start_time = current_time  
+                    
+                    elapsed_time = current_time - self.landing_start_time
+                    
+                    if elapsed_time >= 10.0:
+                        self.transition_to(FlightPhase.RECOVERY, current_time)
+                        
+                else:
+                    self.landing_start_time = None
+            
+            self.last_alt_reading = altitude
 
 # --- MOCK DATA SIMULATION ---
 def run_simulation():
@@ -186,81 +216,58 @@ def run_simulation():
 
     mock_data = [
         (0.0, 9.8, 0.0),
-        (0.1, 9.8, 0.0),
-        (0.2, 9.8, 0.0),
-        (0.3, 9.8, 0.0),
-        (0.4, 9.8, 0.0),
-        (0.5, 45.0, 0.5),
-        (0.6, 50.0, 3.0),
-        (0.7, 55.0, 8.0),
-        (0.8, 60.0, 18.0),
-        (0.9, 60.0, 30.0),
-        (1.0, -5.0, 45.0),
-        (1.1, -9.8, 55.0),
-        (1.2, -9.8, 63.0),
-        (1.3, -9.8, 70.0),
-        (1.4, -9.8, 75.0),
-        (1.5, -9.8, 78.0),
-        (1.6, -9.8, 80.0),
-        (1.7, -9.8, 79.9),
-        (1.8, -9.8, 79.7),
-        (1.9, -9.8, 79.4),
-        (2.0, -9.8, 78.9),
-        (2.1, -9.8, 77.8),
-        (2.2, 55.0, 77.5),
-        (2.3, -20.0, 77.2),
-        (2.4, 5.0, 77.0),
-        (2.5, 8.0, 76.8),
-        (2.6, 12.0, 76.5),
-        (2.7, 9.8, 76.2),
-        (2.8, 9.8, 76.0),
-        (2.9, 9.8, 75.7),
-        (3.0, 9.8, 75.5),
-        (3.1, 9.8, 75.2),
-        (3.2, 9.8, 75.0),
-        (3.3, 9.8, 74.7),
-        (3.4, 9.8, 74.5),
-        (3.5, 9.8, 74.2),
-        (3.6, 9.8, 74.0),
-        (3.7, 9.8, 73.7),
-        (3.8, 9.8, 73.5),
-        (3.9, 9.8, 73.2),
-        (4.0, 9.8, 73.0),
-        (4.1, 9.8, 72.7),
-        (4.2, 9.8, 72.5),
-        (4.3, 9.8, 72.2),
-        (4.4, 9.8, 72.0),
-        (4.5, 9.8, 71.7),
-        (4.6, 9.8, 71.5),
-        (4.7, 9.8, 71.2),
-        (4.8, 9.8, 71.0),
-        (4.9, 9.8, 70.7),
-        (5.0, 9.8, 70.5),
-        (5.1, 9.8, 70.2),
-        (5.2, 9.8, 70.0),
-        (5.3, 9.8, 68.0),
-        (5.4, 9.8, 66.0),
-        (5.5, 9.8, 64.0),
-        (5.6, 9.8, 62.0),
-        (5.7, 9.8, 60.0),
-        (5.8, 9.8, 58.0),
-        (5.9, 9.8, 56.0),
-        (6.0, 9.8, 54.0),
-        (6.1, 9.8, 52.0),
-        (6.2, 9.8, 49.9),
-        (6.3, 9.8, 45.0),
-        (6.4, 9.8, 40.0),
-        (6.5, 9.8, 35.0),
-        (6.6, 9.8, 30.0),
-        (6.7, 9.8, 25.0),
-        (6.8, 9.8, 20.0),
-        (6.9, 9.8, 15.0),
-        (7.0, 9.8, 10.0),
-        (7.1, 9.8, 5.0),
-        (7.2, 9.8, 2.0),
-        (7.3, 9.8, 1.0),
-        (7.4, 9.8, 0.5),
-        (7.5, 9.8, 0.0)
+        (0.1, 9.7, 0.1),
+        (0.5, 45.0, 0.2), 
+        (0.6, 9.8, 0.2),
+        (0.8, 9.8, 25.0), 
+        (0.9, 9.8, 0.0),
+        (1.0, 50.0, 5.0),  
+        (1.1, 55.0, 15.0), 
+        (1.2, 60.0, 22.0),
+        (1.5, 60.0, 100.0),
+        (2.0, 40.0, 200.0),
+        (2.5, -5.0, 300.0),
+        (3.0, -9.8, 350.0),
+        (5.0, -9.8, 450.0),
+        (5.1, -9.8, 448.0),
+        (5.2, -9.8, 446.0),
+        (5.3, -9.8, 444.0),
+        (5.4, -9.8, 455.0),
+        (10.0, -9.8, 500.0),
+        (10.1, -9.8, 500.0),
+        (10.2, -9.8, 499.5),
+        (10.3, -9.8, 499.0),
+        (10.4, -9.8, 498.5),
+        (10.5, -9.8, 498.0),
+        (10.6, -9.8, 497.5),
+        (10.7, -9.8, 497.0),
+        (10.8, -9.8, 496.0),
+        (10.9, -9.8, 495.0),
+        (11.0, -9.8, 494.0),
+        (11.1, -9.8, 493.0),
+        (11.5, -9.8, 490.0),
+        (12.5, -9.8, 480.0), 
+        (13.2, -9.8, 470.0),
+        (15.0, 0.0, 400.0),
+        (20.0, 0.0, 300.0),
+        (25.0, 0.0, 205.0),
+        (25.1, 0.0, 199.0),
+        (40.0, 0.0, 60.0),
+        (42.0, 0.0, 40.0),
+        (43.0, 0.0, 10.0),
+        (44.0, 0.0, 0.5),
+        (45.0, 0.0, 0.5),
+        (46.0, 0.0, 0.5),
+        (47.0, 0.0, 0.5),
+        (48.0, 0.0, 3.5),
+        (49.0, 0.0, 0.5),
+        (50.0, 0.0, 0.5),
+        (52.0, 0.0, 0.5),
+        (54.0, 0.0, 0.5),
+        (56.0, 0.0, 0.5),
+        (58.0, 0.0, 0.5),
+        (59.5, 0.0, 0.5),
+        (60.0, 0.0, 0.5)
     ]
 
     print("--- FLIGHT SIMULATION STARTING ---")
@@ -269,5 +276,8 @@ def run_simulation():
         print(t, acc, alt)
         fsm.update(acc, alt, t)
         time.sleep(0.1)
+
+if __name__ == "__main__":
+    run_simulation()
 ```
 ---
