@@ -1,26 +1,24 @@
 #include <Arduino.h>
-#include "telemetry_structures.h"
+#include "constants.h"
 
-global_data rocket_state;
+StructGlobalData rocketData;
 
-int led_pin= 2; 
-int blink= 500;
-int previous_millis = 0;
-bool led_state = false;
+uint32_t PREVIOUS_MILLIS = 0;
+uint32_t PREVIOUS_TELEMETRY = 0;
+bool ledState = false;
 
 void setup() {
-  Serial.begin(115200);
-  pinMode(led_pin, OUTPUT);
+  Serial.begin(BAUD_RATE);
+  pinMode(LED_PIN, OUTPUT);
   Serial.println("ELS-02 INITIALIZED");
 }
 
 void loop() {
-  rocket_state.timestamp = micros();
-  int current_millis = millis();
+  uint32_t currentMillis = millis();
 
-  if (current_millis - previous_millis > blink) {
-    previous_millis = current_millis;
-    led_state = !led_state;
-    digitalWrite(led_pin, led_state);
+  if (currentMillis - PREVIOUS_MILLIS > BLINK_MS) {
+    PREVIOUS_MILLIS = currentMillis;
+    ledState = !ledState;
+    digitalWrite(LED_PIN, ledState);
   }
 }
