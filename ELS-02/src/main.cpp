@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "constants.h"
+#include "sensors_manager.h"
 
 StructGlobalData rocketData;
 
@@ -11,6 +12,13 @@ void setup() {
   Serial.begin(BAUD_RATE);
   pinMode(LED_PIN, OUTPUT);
   Serial.println("ELS-02 INITIALIZED");
+  initIMU();
+  initAltimeter();
+  initTemperatureSensors();
+  initBulkDefSensors();
+  initAirDefSensors();
+  initAirLoadSensors();
+  initMicrophone();
 }
 
 void loop() {

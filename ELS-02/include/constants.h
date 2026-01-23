@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define LED_PIN 13
+#define LED_PIN 2
 // Baud Rate
 extern const uint32_t BAUD_RATE;
 
@@ -42,7 +42,7 @@ extern const uint32_t BAUD_RATE;
 #define AIR_DEF3_SCK_PIN 48
 
 #define AIR_DEF4_DT_PIN 1
-#define AIR_DEF4_SCK_PIN 2
+//#define AIR_DEF4_SCK_PIN 2
 
 // Airframe Load Sensor Pins
 
