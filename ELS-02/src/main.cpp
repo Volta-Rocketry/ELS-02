@@ -2,11 +2,9 @@
 #include "constants.h"
 #include "sensors_manager.h"
 
-StructGlobalData rocketData;
-
-uint32_t PREVIOUS_MILLIS = 0;
-uint32_t PREVIOUS_TELEMETRY = 0;
-bool ledState = false;
+uint32_t previous_millis = 0;
+uint32_t previous_telemetry = 0;
+bool led_state = false;
 
 void setup() {
   Serial.begin(BAUD_RATE);
@@ -22,11 +20,11 @@ void setup() {
 }
 
 void loop() {
-  uint32_t currentMillis = millis();
+  uint32_t current_millis = millis();
 
-  if (currentMillis - PREVIOUS_MILLIS > BLINK_MS) {
-    PREVIOUS_MILLIS = currentMillis;
-    ledState = !ledState;
-    digitalWrite(LED_PIN, ledState);
+  if (current_millis - previous_millis > BLINK_MS) {
+    previous_millis = current_millis;
+    led_state = !led_state;
+    digitalWrite(LED_PIN, led_state);
   }
 }

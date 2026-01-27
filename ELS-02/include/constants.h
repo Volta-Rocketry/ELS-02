@@ -4,7 +4,7 @@
 
 #define LED_PIN 2
 // Baud Rate
-extern const uint32_t BAUD_RATE;
+#define BAUD_RATE 115200
 
 // PIN DEFINITIONS
 #define SPI_MOSI_PIN 11

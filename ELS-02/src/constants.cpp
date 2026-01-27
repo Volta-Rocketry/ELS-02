@@ -1,7 +1,7 @@
 #include "constants.h"
 
-// Define the baud rate constant
-const uint32_t BAUD_RATE = 115200;
+// Struct initialization
+StructGlobalData rocketData;
 
 // Additional constant definitions
 const int BLINK_MS = 5000;
