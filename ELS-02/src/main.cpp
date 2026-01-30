@@ -1,26 +1,30 @@
 #include <Arduino.h>
-#include "telemetry_structures.h"
+#include "constants.h"
+#include "sensors_manager.h"
 
-global_data rocket_state;
-
-int led_pin= 2; 
-int blink= 500;
-int previous_millis = 0;
+uint32_t previous_millis = 0;
+uint32_t previous_telemetry = 0;
 bool led_state = false;
 
 void setup() {
-  Serial.begin(115200);
-  pinMode(led_pin, OUTPUT);
+  Serial.begin(BAUD_RATE);
+  pinMode(LED_PIN, OUTPUT);
   Serial.println("ELS-02 INITIALIZED");
+  initIMU();
+  initAltimeter();
+  initTemperatureSensors();
+  initBulkDefSensors();
+  initAirDefSensors();
+  initAirLoadSensors();
+  initMicrophone();
 }
 
 void loop() {
-  rocket_state.timestamp = micros();
-  int current_millis = millis();
+  uint32_t current_millis = millis();
 
-  if (current_millis - previous_millis > blink) {
+  if (current_millis - previous_millis > BLINK_MS) {
     previous_millis = current_millis;
     led_state = !led_state;
-    digitalWrite(led_pin, led_state);
+    digitalWrite(LED_PIN, led_state);
   }
 }
