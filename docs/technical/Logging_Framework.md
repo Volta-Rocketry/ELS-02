@@ -1,4 +1,4 @@
-# Logging Framework
+# Define and Implement Logging Framework
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Define the telemetry storage strategy, ensuring data integrity under high-dynami
 
 ## Storage Architecture
 
-The system implements a Deferred Storage Architecture. Flight telemetry is logged exclusively to the on-board Flash module during flight, with an automatic offload to the SD card immediately upon landing detection or system reboot.
+The system implements a deferred storage architecture. Flight telemetry is recorded exclusively to the integrated Flash module during flight, with a manual download to an SD card inserted after the flight by activating a switch/button.
 
 ### Justification
 
@@ -16,34 +16,31 @@ The system implements a Deferred Storage Architecture. Flight telemetry is logge
     
 * **Deterministic timing:** Flash module provides predictable write latencies, eliminating the blocking delays inherent to SD card modules.
 
-* **Data recovery:** Upon landing detection, the system flushes the buffer to the SD card. If power is lost upon impact, the Boot Fail-Safe detects pending data on the next power-up and forces a dump before the system can be armed again.
+* **Data recovery:** Implementing post-flight storage on an SD card prevents damage to the card itself or other components. It also facilitates portability and data retrieval after a flight.
 
 ### Architecture Diagram 
 
 ```mermaid
 graph LR
-    A[Start / Boot] --> B{Data in Flash?}
-    B -- Yes (Fail-Safe) --> C[Dump Flash to SD]
-    C --> D[Erase Flash]
-    D --> E[Ready to Fly]
-    B -- No (Clean) --> E
+    A[Power ON] --> B{Switch/button State?}
     
-    E --> F[FLIGHT MODE]
-    F -->|Log High Speed| G[(Flash Memory)]
+    B -- "OFF (Flight Mode)" --> C(Wait for Launch Detect)
+    C --> D[Recording to FLASH]
+    D --> E(Landing / Memory Full)
+    E --> F[Stop Recording]
     
-    G --> H{Landing Detected}
-    H -->|Power ON| I[Auto-Offload to SD]
-    H -.->|Power LOSS| A
-    
-    I --> J[Success: SD Ready]
-    J --> D
+    B -- "ON (Transfer Mode)" --> H{SD Card Present?}
+    H -- No --> I(Blink Error LED)
+    H -- Yes --> J[DUMP Flash to SD]
+    J --> K(Blink Success LED)
+    K --> L[Erase Flash]
 ```
 
 ---
 
 ## Data Serialization & Format
 
-To ensure high-performance logging without compromising CPU cycles, the system avoids text conversion (CSV) during flight. Instead, it implements a Direct Binary Serialization protocol.
+To ensure high-performance logging without compromising CPU cycles, the system avoids text conversion (CSV) during flight. Instead, it implements a airect binary serialization protocol.
 
 ### Storage Format
 
@@ -51,9 +48,9 @@ Data is stored in .bin files by directly dumping the memory block of the `Struct
 
 ### Data Structure
 
-The log follows a nested structure architecture defined by the `StructGlobalData` container. This ensures strict separation between raw sensor inputs and algorithmic outputs within the same synchronized frame.
+The log follows a Nested Structure Architecture defined by the `StructGlobalData` container. This ensures strict separation between raw sensor inputs and algorithmic outputs within the same synchronized frame.
 
-(Note: Full structure definition provided in [constants.h](../../ELS-02/include/constants.h))
+(Note: Full structure definition provided in [constants.h](.../.../ELS-02/include/constants.h))
 
 ### Multi-Rate Synchronization
 
