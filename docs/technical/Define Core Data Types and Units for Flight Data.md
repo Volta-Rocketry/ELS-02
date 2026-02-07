@@ -13,7 +13,7 @@ In this part, the data and their physical units are defined, establishing data s
 * **Deformation:** Strain ($ε$) (dimensionless ($mm/mm$)). Variable: `def` Type: `float`
 * **Loads:** Newtons ($N$). Variable: `load` Type: `float`
 * **Audio:** Amplitude. Variable: `audio` Type: `int16_t`
-* **Time:** Seconds ($s$) since system startup. Variable: `timestamp` Type: `uint32_t`
+* **Time:** Seconds ($s$) since system startup. Variable: `timestamp` Type: `float`
 # Data Structures
 * **Motion and Orientation**
 
@@ -25,7 +25,7 @@ struct StructAcceleration {
     float ax; // Acceleration on the X axis
     float ay; // Acceleration on the Y axis
     float az; // Acceleration on the Z axis
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 **Linear Velocity:**
@@ -34,7 +34,7 @@ struct StructLinearVelocity {
     float vx; // linear velocity on the X axis
     float vy; // Linear velocity on the Y axis
     float vz; // Linear velocity on the Z axis
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 **Angular Velocity:**
@@ -43,7 +43,7 @@ struct StructAngularVelocity {
     float gx; // Angular velocity on the X axis
     float gy; // Angular velocity on the Y axis
     float gz; // Angular velocity on the Z axis
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 **Magnetometer:**
@@ -52,7 +52,7 @@ struct StructMagnetometer {
     float mx; // Magnetic field on the X axis
     float my; // Magnetic field on the Y axis
     float mz; // Magnetic field on the Z axis
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 * **Structural Measurements**
@@ -64,7 +64,7 @@ struct StructBulkheadDeformation {
     float bulkDef1; // Bulkhead deformation (sensor "1")
     float bulkDef2; // Bulkhead deformation (sensor "2")
     float bulkDef3; // Bulkhead deformation (sensor "3")
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 **Airframe Deformation:**
@@ -74,7 +74,7 @@ struct StructAirframeDeformation {
     float airDef2; // Airframe deformation (sensor "2")
     float airDef3; // Airframe deformation (sensor "3")
     float airDef4; // Airframe deformation (sensor "4")
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 **Airframe Loads:**
@@ -84,7 +84,7 @@ struct StructAirframeLoad {
     float airLoad2; // Airframe load (sensor "2")
     float airLoad3; // Airframe load (sensor "3")
     float airLoad4; // Airframe load (sensor "4")
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 * **Environment and Avionics**
@@ -95,7 +95,7 @@ struct StructAirframeLoad {
 struct StructBarometer {
     float pressure;    // Pressure
     float alt;         // Altitude
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 **Temperature:**
@@ -105,7 +105,7 @@ struct StructTemperature {
     float temp2; // Temperature (sensor "2")
     float temp3; // Temperature (sensor "3")
     float temp4; // Temperature (sensor "4")
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 **Audio:**
@@ -132,7 +132,7 @@ struct StructEstimated {
     float sx; // X axis
     float sy; // Y axis
     float sz; // Z axis
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 **Digital Filtering:**
@@ -142,13 +142,13 @@ struct filtered_data {
     float accelF[3]; // [ax, ay, az] filtered acceleration
     float angVelF[3];  // [gx, gy, gz] filtered velocity
     float altF;      // Filtered altitude
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 # Global Data Container
 ```cpp
 struct StructGlobalData {
-    uint32_t timestamp; 
+    float timestamp; 
     
     // Motion
     StructAcceleration accel;
