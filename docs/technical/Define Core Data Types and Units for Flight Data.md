@@ -112,7 +112,7 @@ struct StructTemperature {
 ```cpp
 struct StructAudio {
     int16_t audio; // Mic sensor
-    uint32_t timestamp; // Timestamp
+    float timestamp; // Timestamp
 };
 ```
 # Processed Data
