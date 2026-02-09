@@ -52,18 +52,22 @@ The log follows a Nested Structure Architecture defined by the `StructGlobalData
 
 (Note: Full structure definition provided in [constants.h](.../.../ELS-02/include/constants.h))
 
-### Multi-Rate Synchronization
+### Multi-Rate Synchronization & Data Freshness
 
-Since sensors operate at different frequencies, the system uses a "snapshot" strategy enabled by the individual timestamps inside each sub-structure.
+Since sensors operate at different sampling frequencies, the system employs a Global Bitmask Strategy to minimize memory overhead while maintaining temporal precision.
 
-* **Global Timestamp:** The system records a full `StructGlobalData` snapshot at the target loop rate.
+* **Global Structure:** The system records a fixed-size `StructGlobalData` packet at the target loop rate (100Hz). This packet contains a single `uint32_t` Global Timestamp.
 
-* **Data Freshness Logic:** 
+* **Freshness Bitmask:** A 16-bit header flag is used and each bit corresponds to a specific sensor group.
 
-    * **Fast Sensors:** Update every cycle. Their local timestamp matches the Global Timestamp.
+* **Synchronization Logic:** 
 
-    * **Slow Sensors:** Update only when new data is ready. If data is not ready, the previous value and previous timestamp are retained.
+    * **Fast Sensors:** Update every cycle. Their corresponding freshness bit is set to 1 (TRUE) in every packet.
 
-*Analysis Note:* During post-flight analysis, duplicate timestamps in specific sub-structures effectively flag "held" data, allowing the analysis software to reconstruct the exact timeline without interpolation errors.
+    * **Slow Sensors:** Update only when new data is available.
+        * **New Data:** The value is updated in the structure, and the freshness bit is set to 1 (TRUE).
+        * **No New Data:** The system retains the previous value, and the freshness bit is set to 0 (FALSE).
+
+*Analysis Note:* During post-flight analysis, the parser reads the Bitmask first. If a sensor's bit is 0, the software identifies the data as a "repeat" and can either discard it or use it for interpolation, ensuring that only physically measured events are processed without timing ambiguity.
 
 ---
